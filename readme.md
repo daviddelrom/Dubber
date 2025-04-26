@@ -1,4 +1,4 @@
-# MKV Analyzer
+# Dubber
 
 Este es un programa interactivo en Python diseñado para combinar vídeos en diferentes idiomas (español e inglés) usando `mkvmerge`. El programa analiza archivos de vídeo, detecta coincidencias basadas en el ID de IMDb y combina las pistas deseadas en una carpeta final.
 
@@ -20,7 +20,7 @@ sudo apt install mkvtoolnix    # En Debian/Ubuntu
 2. Clona este repositorio y entra en la carpeta:
 
 ```bash
-git clone https://github.com/tuusuario/mkv-analyzer.git
+git clone https://github.com/daviddelrom/dubber.git
 cd mkv-analyzer
 ```
 
@@ -74,8 +74,4 @@ Elimina todas las pistas y coincidencias guardadas. Las carpetas definidas se co
 - Los archivos deben contener un ID IMDb en su nombre, por ejemplo: `tt1234567_pelicula.mkv`.
 - Soporta subdirectorios anidados.
 - El programa guarda toda la información en una base de datos SQLite (`mkv.db`).
-
-## Licencia
-
-MIT
 
