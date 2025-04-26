@@ -1,5 +1,4 @@
 import os
-import os
 import sqlite3
 import subprocess
 import json
@@ -160,12 +159,39 @@ def buscar_coincidencias():
                               (archivo_esp, ruta_esp, archivo_eng, ruta_eng, ideal))
         conn.commit()
 
+def combinar_archivos():
+    with sqlite3.connect("mkv.db") as conn:
+        c = conn.cursor()
+        c.execute("SELECT archivo_esp, ruta_esp, archivo_eng, ruta_eng FROM coincidencias WHERE coincidenciaideal = 1")
+        coincidencias = c.fetchall()
+        ruta_dub = obtener_ruta("dub")
+
+        for archivo_esp, ruta_esp, archivo_eng, ruta_eng in coincidencias:
+            info = cargar_info_mkv(ruta_esp)
+            pistas_audio_es = []
+            for track in info.get("tracks", []):
+                if track.get("type") == "audio" and track.get("properties", {}).get("language_ietf") == "es":
+                    pistas_audio_es.append(str(track.get("id")))
+
+            salida = ruta_eng.replace(obtener_ruta("eng"), ruta_dub)
+            os.makedirs(os.path.dirname(salida), exist_ok=True)
+
+            comando = ["mkvmerge", "-o", salida, "-D"]
+            if pistas_audio_es:
+                comando += ["-a", ",".join(pistas_audio_es)]
+            comando += [ruta_esp, ruta_eng]
+
+            print("Ejecutando:", " ".join(comando))
+            resultado = subprocess.run(comando, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+            print(resultado.stdout)
+
 def menu():
     while True:
         print("\n1 - Definir carpetas")
         print("2 - Analizar carpetas")
         print("3 - Buscar coincidencias")
         print("4 - Vaciar base de datos")
+        print("5 - Combinar archivos")
         print("0 - Salir")
         opcion = input("Elige una opción: ").strip()
 
@@ -178,6 +204,8 @@ def menu():
             buscar_coincidencias()
         elif opcion == "4":
             vaciar_base_de_datos()
+        elif opcion == "5":
+            combinar_archivos()
         elif opcion == "0":
             break
         else:
