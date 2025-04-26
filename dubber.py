@@ -34,7 +34,7 @@ def crear_bd():
                 coincidenciaideal INTEGER
             )
         """)
-        # Insertar rutas por defecto si no existen
+        # Valores por defecto
         for tipo, ruta in [("esp", "./esp"), ("eng", "./eng"), ("dub", "./dub")]:
             c.execute("INSERT OR IGNORE INTO carpetas (tipo, ruta) VALUES (?, ?)", (tipo, ruta))
         conn.commit()
@@ -56,7 +56,7 @@ def vaciar_base_de_datos():
         c.execute("DELETE FROM pistas")
         c.execute("DELETE FROM coincidencias")
         conn.commit()
-        print("Base de datos vaciada (pistas y coincidencias eliminadas).")
+        print("Base de datos vaciada.")
 
 def obtener_ruta(tipo):
     with sqlite3.connect("mkv.db") as conn:
@@ -113,6 +113,13 @@ def convertir_a_segundos(tiempo):
     h, m, s = partes
     return int(h) * 3600 + int(m) * 60 + float(s)
 
+def extraer_info_nombre(archivo):
+    imdb_match = re.search(r"(tt\d+)", archivo)
+    serie_match = re.search(r"S(\d{2})E(\d{2})", archivo, re.IGNORECASE)
+    imdb_id = imdb_match.group(1) if imdb_match else None
+    serie_info = serie_match.group(0).upper() if serie_match else None
+    return imdb_id, serie_info
+
 def buscar_coincidencias():
     with sqlite3.connect("mkv.db") as conn:
         c = conn.cursor()
@@ -123,19 +130,19 @@ def buscar_coincidencias():
         eng_map = {}
 
         for archivo, ruta in datos:
-            match = re.search(r"(tt\d+)", archivo)
-            if not match:
+            imdb_id, serie_info = extraer_info_nombre(archivo)
+            if not imdb_id:
                 continue
-            imdb_id = match.group(1)
+            clave = (imdb_id, serie_info)
             if obtener_ruta("esp") in ruta:
-                esp_map[imdb_id] = (archivo, ruta)
+                esp_map[clave] = (archivo, ruta)
             elif obtener_ruta("eng") in ruta:
-                eng_map[imdb_id] = (archivo, ruta)
+                eng_map[clave] = (archivo, ruta)
 
-        for imdb_id in esp_map:
-            if imdb_id in eng_map:
-                archivo_esp, ruta_esp = esp_map[imdb_id]
-                archivo_eng, ruta_eng = eng_map[imdb_id]
+        for clave in esp_map:
+            if clave in eng_map:
+                archivo_esp, ruta_esp = esp_map[clave]
+                archivo_eng, ruta_eng = eng_map[clave]
 
                 c.execute("SELECT duracion FROM pistas WHERE ruta = ? AND pista = 0", (ruta_esp,))
                 d1 = c.fetchone()
@@ -158,8 +165,7 @@ def menu():
         print("\n1 - Definir carpetas")
         print("2 - Analizar carpetas")
         print("3 - Buscar coincidencias")
-        print("4 - Generar archivos combinados")
-        print("5 - Vaciar base de datos")
+        print("4 - Vaciar base de datos")
         print("0 - Salir")
         opcion = input("Elige una opción: ").strip()
 
@@ -171,44 +177,11 @@ def menu():
         elif opcion == "3":
             buscar_coincidencias()
         elif opcion == "4":
-            generar_archivos_combinados()
-        elif opcion == "5":
             vaciar_base_de_datos()
         elif opcion == "0":
             break
         else:
             print("Opción inválida")
-
-def generar_archivos_combinados():
-    with sqlite3.connect("mkv.db") as conn:
-        c = conn.cursor()
-        c.execute("SELECT archivo_esp, ruta_esp, archivo_eng, ruta_eng FROM coincidencias WHERE coincidenciaideal = 1")
-        coincidencias = c.fetchall()
-
-        for archivo_esp, ruta_esp, archivo_eng, ruta_eng in coincidencias:
-            info_esp = cargar_info_mkv(ruta_esp)
-            if not info_esp:
-                continue
-
-            pistas_es = [str(track['id']) for track in info_esp.get("tracks", [])
-                         if track.get("type") == "audio" and track.get("properties", {}).get("language_ietf") == "es"]
-
-            args = ["mkvmerge", "-o"]
-
-            ruta_salida = ruta_eng.replace(obtener_ruta("eng"), obtener_ruta("dub"))
-            args.append(ruta_salida)
-            args.append("-D")
-            if pistas_es:
-                args.append("-a")
-                args.append(",".join(pistas_es))
-            args.append(ruta_esp)
-            args.append(ruta_eng)
-
-            print("\nEjecutando:", " ".join(args))
-            resultado = subprocess.run(args, text=True, capture_output=True)
-            print(resultado.stdout)
-            if resultado.stderr:
-                print("STDERR:", resultado.stderr)
 
 if __name__ == "__main__":
     crear_bd()
