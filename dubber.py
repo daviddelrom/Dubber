@@ -30,10 +30,10 @@ def crear_bd():
                 ruta_esp TEXT,
                 archivo_eng TEXT,
                 ruta_eng TEXT,
-                coincidenciaideal INTEGER
+                coincidenciaideal INTEGER,
+                archivo_salida TEXT
             )
         """)
-        # Valores por defecto
         for tipo, ruta in [("esp", "./esp"), ("eng", "./eng"), ("dub", "./dub")]:
             c.execute("INSERT OR IGNORE INTO carpetas (tipo, ruta) VALUES (?, ?)", (tipo, ruta))
         conn.commit()
@@ -92,7 +92,7 @@ def analizar_carpeta(tipo):
                 if not info:
                     continue
                 for track in info.get("tracks", []):
-                    numero = track.get("id", 0)
+                    numero = track.get("id", "N/A")
                     tipo_pista = track.get("type", "")
                     duracion_str = track.get("properties", {}).get("tag_duration", "0:00:00.000")
                     idioma = track.get("properties", {}).get("language_ietf", "und")
@@ -155,25 +155,55 @@ def buscar_coincidencias():
                         print(f"Coincidencia ideal: {archivo_esp} <-> {archivo_eng}")
                     else:
                         print(f"Coincidencia encontrada pero diferencia de duración: {archivo_esp} <-> {archivo_eng}")
-                    c.execute("INSERT INTO coincidencias VALUES (?, ?, ?, ?, ?)",
-                              (archivo_esp, ruta_esp, archivo_eng, ruta_eng, ideal))
+
+                    archivo_salida = os.path.join(
+                        obtener_ruta("dub"),
+                        os.path.relpath(ruta_eng, obtener_ruta("eng"))
+                    )
+
+                    c.execute("""
+                        SELECT 1 FROM coincidencias 
+                        WHERE archivo_esp = ? AND ruta_esp = ? AND archivo_eng = ? AND ruta_eng = ?
+                    """, (archivo_esp, ruta_esp, archivo_eng, ruta_eng))
+                    existe = c.fetchone()
+
+                    if existe:
+                        c.execute("""
+                            UPDATE coincidencias 
+                            SET coincidenciaideal = ?, archivo_salida = ?
+                            WHERE archivo_esp = ? AND ruta_esp = ? AND archivo_eng = ? AND ruta_eng = ?
+                        """, (ideal, archivo_salida, archivo_esp, ruta_esp, archivo_eng, ruta_eng))
+                    else:
+                        c.execute("""
+                            INSERT INTO coincidencias 
+                            VALUES (?, ?, ?, ?, ?, ?)
+                        """, (archivo_esp, ruta_esp, archivo_eng, ruta_eng, ideal, archivo_salida))
         conn.commit()
 
 def combinar_archivos():
     with sqlite3.connect("mkv.db") as conn:
         c = conn.cursor()
-        c.execute("SELECT archivo_esp, ruta_esp, archivo_eng, ruta_eng FROM coincidencias WHERE coincidenciaideal = 1")
+        c.execute("SELECT archivo_esp, ruta_esp, archivo_eng, ruta_eng, coincidenciaideal, archivo_salida FROM coincidencias")
         coincidencias = c.fetchall()
-        ruta_dub = obtener_ruta("dub")
 
-        for archivo_esp, ruta_esp, archivo_eng, ruta_eng in coincidencias:
+        for archivo_esp, ruta_esp, archivo_eng, ruta_eng, ideal, salida in coincidencias:
+            if not ideal:
+                c.execute("SELECT duracion FROM pistas WHERE ruta = ? AND pista = 0", (ruta_esp,))
+                d1 = c.fetchone()
+                c.execute("SELECT duracion FROM pistas WHERE ruta = ? AND pista = 0", (ruta_eng,))
+                d2 = c.fetchone()
+                if d1 and d2:
+                    print(f"Advertencia: pista0esp y pista0eng no duran lo mismo ({d1[0]} vs {d2[0]})")
+                    resp = input("¿Desea combinar igualmente? (s/n): ").strip().lower()
+                    if resp != "s":
+                        continue
+
             info = cargar_info_mkv(ruta_esp)
             pistas_audio_es = []
             for track in info.get("tracks", []):
                 if track.get("type") == "audio" and track.get("properties", {}).get("language_ietf") == "es":
                     pistas_audio_es.append(str(track.get("id")))
 
-            salida = ruta_eng.replace(obtener_ruta("eng"), ruta_dub)
             os.makedirs(os.path.dirname(salida), exist_ok=True)
 
             comando = ["mkvmerge", "-o", salida, "-D"]
