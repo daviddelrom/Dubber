@@ -47,3 +47,12 @@
 .github/prompts/specify.prompt.md
 .github/prompts/tasks.prompt.md
 .github/prompts/verify.prompt.md
+
+# Python / app
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.db
+*.db-wal
+*.db-shm

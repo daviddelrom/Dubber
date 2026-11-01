@@ -1,0 +1,31 @@
+[project]
+name = "dubber"
+version = "2.0.0"
+description = "Combina el audio doblado de un vídeo con la versión original de mayor calidad (mkvmerge), con interfaz web."
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "jinja2",
+    "sqlmodel",
+    "python-multipart",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "httpx"]
+
+[project.scripts]
+dubber = "dubber.__main__:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["dubber*"]
+
+[tool.setuptools.package-data]
+dubber = ["web/templates/*.html", "web/static/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

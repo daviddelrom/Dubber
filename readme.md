@@ -1,77 +1,56 @@
 # Dubber
 
-Este es un programa interactivo en Python diseñado para combinar vídeos en diferentes idiomas (español e inglés) usando `mkvmerge`. El programa analiza archivos de vídeo, detecta coincidencias basadas en el ID de IMDb y combina las pistas deseadas en una carpeta final.
+App web local (Python + FastAPI) para combinar vídeos en diferentes idiomas con `mkvmerge`. Tienes una película o serie en versión original y buena calidad, y otra copia doblada al español (normalmente de menor calidad). Dubber las empareja por ID de IMDb y genera un MKV con el **vídeo y audio original** más las **pistas de audio en español**.
 
 ## Requisitos
 
-- Python 3.x
-- `mkvmerge` (parte de [MKVToolNix](https://mkvtoolnix.download/))
-- `sqlite3` (incluido con Python)
-
-## Instalación
-
-1. Asegúrate de tener `mkvmerge` disponible en tu sistema:
+- Python 3.11 o superior
+- `mkvmerge` ([MKVToolNix](https://mkvtoolnix.download/))
 
 ```bash
-sudo pacman -S mkvtoolnix-cli  # En Arch Linux
-sudo apt install mkvtoolnix    # En Debian/Ubuntu
+sudo pacman -S mkvtoolnix-cli  # Arch Linux
+sudo apt install mkvtoolnix    # Debian/Ubuntu
 ```
 
-2. Clona este repositorio y entra en la carpeta:
+## Instalación y arranque
 
 ```bash
 git clone https://github.com/daviddelrom/dubber.git
-cd mkv-analyzer
+cd dubber
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+python -m dubber            # http://127.0.0.1:8000
 ```
 
-3. Ejecuta el script principal:
-
-```bash
-python3 main.py
-```
-
-## Estructura del proyecto
-
-- `esp/` → Carpeta con los vídeos en español
-- `eng/` → Carpeta con los vídeos en inglés
-- `dub/` → Carpeta donde se generarán los vídeos combinados
+La app solo escucha en `127.0.0.1`. Opción: `--port N`. La base de datos SQLite se guarda en `./dubber.db` (o en la ruta de la variable `DUBBER_DB`).
 
 ## Uso
 
-El programa muestra un menú interactivo con las siguientes opciones:
+1. **Ajustes**: indica las carpetas de español, inglés y salida.
+2. **Biblioteca** → *Escanear carpetas*: analiza recursivamente `.mkv`, `.mp4` y `.avi`. Los reescaneos son incrementales (solo se reanalizan archivos cambiados) y se limpian los archivos borrados.
+3. **Coincidencias**: empareja por ID de IMDb (`tt1234567`) y, en series, por temporada y episodio (`S01E02`). Si la duración difiere en 1 s o menos, la coincidencia es *ideal*; si difiere o es desconocida, queda *dudosa* y hay que aprobarla a mano. Tus decisiones se conservan al reescanear.
+4. **Mezclar seleccionadas**: crea un trabajo en segundo plano. El resultado va a la carpeta de salida con la misma ruta relativa y nombre que el archivo en inglés (siempre como `.mkv`). Si el archivo ya existe se omite, salvo que marques *Sobrescribir*.
+5. **Cola**: progreso en vivo, registro y cancelación de cada trabajo. Los escaneos y las mezclas se ejecutan de uno en uno.
+
+Los archivos deben llevar el ID de IMDb en el nombre, por ejemplo `tt1234567_pelicula.mkv`.
+
+## Estructura
 
 ```
-1 - Definir carpetas
-2 - Analizar carpetas
-3 - Buscar coincidencias
-4 - Generar combinaciones (mkvmerge)
-5 - Vaciar base de datos
-0 - Salir
+dubber/
+  core/   lógica pura: nombres, emparejado, wrapper de mkvmerge
+  db/     modelos SQLModel y sesión SQLite (WAL)
+  jobs/   cola en segundo plano y tareas de escaneo/mezcla
+  web/    FastAPI, plantillas Jinja y HTMX
+tests/    pytest (usan ffmpeg y mkvmerge para generar MKV reales)
 ```
 
-### 1 - Definir carpetas
+## Tests
 
-Permite definir manualmente las rutas de las carpetas `esp`, `eng` y `dub`. Si no se definen, se usan por defecto `./esp`, `./eng` y `./dub`.
+```bash
+pytest
+```
 
-### 2 - Analizar carpetas
+## Migración desde el script antiguo
 
-Escanea recursivamente las carpetas `esp` y `eng` buscando archivos `.mkv`, `.mp4` o `.avi`, y extrae información de las pistas con `mkvmerge`.
-
-### 3 - Buscar coincidencias
-
-Busca coincidencias entre archivos en `esp` y `eng` basadas en el ID IMDb (`tt...`) contenido en el nombre del archivo. Verifica que la duración del video coincida (tolerancia de 1 segundo). Guarda las coincidencias en la base de datos.
-
-### 4 - Generar combinaciones
-
-Combina las coincidencias ideales usando `mkvmerge`. El archivo generado irá a la carpeta `dub`, con el mismo nombre del archivo de inglés. Solo se combinan las pistas de audio en español (`es`).
-
-### 5 - Vaciar base de datos
-
-Elimina todas las pistas y coincidencias guardadas. Las carpetas definidas se conservan.
-
-## Notas
-
-- Los archivos deben contener un ID IMDb en su nombre, por ejemplo: `tt1234567_pelicula.mkv`.
-- Soporta subdirectorios anidados.
-- El programa guarda toda la información en una base de datos SQLite (`mkv.db`).
-
+El script de menú (`dubber.py`) y su base `mkv.db` ya no se usan. Define las carpetas en Ajustes y escanea de nuevo.

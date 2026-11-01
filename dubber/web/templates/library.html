@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Biblioteca · Dubber{% endblock %}
+{% block content %}
+<div class="row">
+  <h2 style="margin-right:auto">Biblioteca</h2>
+  <a class="btn" href="/library">Todos</a>
+  <a class="btn" href="/library?kind=esp">Español</a>
+  <a class="btn" href="/library?kind=eng">Inglés</a>
+  <form method="post" action="/scan" class="inline"><button class="primary" {{ '' if configured else 'disabled' }}>Escanear carpetas</button></form>
+</div>
+{% if not configured %}
+  <p>Primero <a href="/settings">define las carpetas</a>.</p>
+{% elif not files %}
+  <p class="muted">Aún no hay archivos. Pulsa «Escanear carpetas».</p>
+{% else %}
+<table>
+  <tr><th>Tipo</th><th>Archivo</th><th>IMDb</th><th>Duración</th><th>Pistas</th></tr>
+  {% for f in files %}
+  <tr>
+    <td>{{ roots[f.root_id].kind }}</td>
+    <td>{{ f.relpath }}{% if f.error %}<br><span class="err">{{ f.error }}</span>{% endif %}</td>
+    <td>{{ f.imdb_id or '—' }}{% if f.season is not none %} S{{ '%02d' % f.season }}E{{ '%02d' % f.episode }}{% endif %}</td>
+    <td>{% if f.duration_s %}{{ '%d:%02d:%02d' % (f.duration_s // 3600, f.duration_s % 3600 // 60, f.duration_s % 60) }}{% else %}—{% endif %}</td>
+    <td class="muted">{% for t in tracks.get(f.id, []) %}{{ t.type[0] }}:{{ t.language }}{{ ' ' if not loop.last }}{% endfor %}</td>
+  </tr>
+  {% endfor %}
+</table>
+<p class="muted">v = vídeo, a = audio, s = subtítulos.</p>
+{% endif %}
+{% endblock %}

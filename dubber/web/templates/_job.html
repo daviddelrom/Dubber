@@ -1,0 +1,13 @@
+<div class="card" id="job-{{ job.id }}"
+  {% if job.status in ('queued', 'running') %}hx-get="/jobs/{{ job.id }}/card" hx-trigger="every 1s" hx-swap="outerHTML"{% endif %}>
+  <div class="row">
+    <strong>#{{ job.id }} · {{ 'Escaneo' if job.kind == 'scan' else 'Mezcla' }}</strong>
+    <span class="badge {{ job.status }}">{{ {'queued': 'En cola', 'running': 'En curso', 'done': 'Terminado', 'failed': 'Fallido', 'cancelled': 'Cancelado'}[job.status] }}</span>
+    <span class="muted">{{ job.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+    {% if job.status in ('queued', 'running') %}
+      <form class="inline" method="post" action="/jobs/{{ job.id }}/cancel" style="margin-left:auto"><button>Cancelar</button></form>
+    {% endif %}
+  </div>
+  <progress max="100" value="{{ job.progress }}"></progress>
+  {% if job.log %}<pre>{{ job.log }}</pre>{% endif %}
+</div>

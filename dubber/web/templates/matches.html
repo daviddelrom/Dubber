@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Coincidencias · Dubber{% endblock %}
+{% block content %}
+<h2>Coincidencias</h2>
+{% if not matches %}
+  <p class="muted">No hay coincidencias. Escanea las carpetas desde la <a href="/library">biblioteca</a>.</p>
+{% else %}
+<form method="post" action="/matches/merge" id="merge"></form>
+<table>
+  <tr><th></th><th>Español</th><th>Inglés (original)</th><th>Dif. duración</th><th>Estado</th><th></th></tr>
+  {% for m in matches %}
+  <tr>
+    <td><input type="checkbox" form="merge" name="match_ids" value="{{ m.id }}"
+        {{ 'checked' if m.status in ('ideal', 'approved') and not m.merged_at }}
+        {{ 'disabled' if m.status in ('doubtful', 'discarded') }}></td>
+    <td>{{ files[m.esp_file_id].relpath }}</td>
+    <td>{{ files[m.eng_file_id].relpath }}</td>
+    <td>{% if m.duration_diff_s is none %}desconocida{% else %}{{ '%.1f' % m.duration_diff_s }} s{% endif %}</td>
+    <td><span class="badge {{ m.status }}">{{ STATUS_LABELS[m.status] }}</span>{% if m.merged_at %} <span class="muted">mezclada</span>{% endif %}</td>
+    <td>
+      {% if m.status != 'approved' %}<form class="inline" method="post" action="/matches/{{ m.id }}/status"><input type="hidden" name="status" value="approved"><button>Aprobar</button></form>{% endif %}
+      {% if m.status != 'discarded' %}<form class="inline" method="post" action="/matches/{{ m.id }}/status"><input type="hidden" name="status" value="discarded"><button>Descartar</button></form>{% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+<p class="row">
+  <button class="primary" form="merge">Mezclar seleccionadas</button>
+  <label><input type="checkbox" form="merge" name="overwrite" value="true"> Sobrescribir si ya existe</label>
+</p>
+<p class="muted">Las coincidencias dudosas (duración distinta o desconocida) deben aprobarse a mano antes de mezclarse.</p>
+{% endif %}
+{% endblock %}
