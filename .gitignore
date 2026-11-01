@@ -56,3 +56,13 @@ __pycache__/
 *.db
 *.db-wal
 *.db-shm
+
+# rsc local state (hooks, seals, logs) and managed skill links — machine-local
+.github/rsc/python
+.github/agents/developer.agent.md
+.github/agents/finding-verifier.agent.md
+.github/agents/python-reviewer.agent.md
+.github/agents/refuter-correctness.agent.md
+.github/agents/refuter-security.agent.md
+.github/agents/refuter-tests.agent.md
+.github/prompts/python-review.prompt.md
