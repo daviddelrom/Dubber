@@ -21,7 +21,9 @@ STATUS_LABELS = {
 }
 
 
-def create_app(engine: Engine | None = None, runner: JobRunner | None = None) -> FastAPI:
+def create_legacy_app(
+    engine: Engine | None = None, runner: JobRunner | None = None
+) -> FastAPI:
     engine = engine or make_engine()
     runner = runner or JobRunner(engine)
 
@@ -149,3 +151,11 @@ def create_app(engine: Engine | None = None, runner: JobRunner | None = None) ->
         return RedirectResponse("/jobs", status_code=303)
 
     return app
+
+
+def create_app(engine: Engine | None = None, runner: JobRunner | None = None) -> FastAPI:
+    if engine is not None or runner is not None:
+        return create_legacy_app(engine, runner)
+    from .library_app import create_app as create_v2_app
+
+    return create_v2_app()

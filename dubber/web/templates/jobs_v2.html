@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Trabajos · Dubber{% endblock %}
+{% block content %}
+<h2>Trabajos de la biblioteca</h2>
+{% for item in jobs %}
+  {% set job = item.job %}
+  {% set report = item.report %}
+  <section class="card" id="job-{{ job.job_id }}">
+    {% set progress = report.get('progress', {}) %}
+    <div class="row">
+      <strong>{{ 'Escaneo y consolidación' if job.kind == 'scan' else 'Resolución de revisión' }} · {{ job.job_id[:8] }}</strong>
+      <span class="badge {{ job.status }}">{{ {'queued': 'En cola', 'running': 'En curso', 'completed': 'Terminado', 'failed': 'Fallido', 'cancelled': 'Cancelado'}[job.status] }}</span>
+      <span class="muted">{{ job.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+      {% if job.status in ('queued', 'running') %}
+        <form class="inline" method="post" action="/jobs/{{ job.job_id }}/cancel"><button>Cancelar</button></form>
+      {% endif %}
+    </div>
+    <p class="muted">Fase: {{ progress.get('phase', job.phase) }} · {{ progress.get('completed', job.completed) }}/{{ progress.get('total', job.total) }} · Archivos: {{ report.get('scanned', 0) }}</p>
+    <progress max="{{ progress.get('total', job.total) or 1 }}" value="{{ progress.get('completed', job.completed) }}"></progress>
+    {% if report.get('consolidated') %}
+      <h3>Consolidados</h3>
+      <ul>{% for output in report.consolidated %}<li><code>{{ output.path }}</code></li>{% endfor %}</ul>
+    {% endif %}
+    {% if report.get('skipped') %}
+      <details><summary>Omitidos ({{ report.skipped | length }})</summary>
+        <ul>{% for item in report.skipped %}<li>{{ item.relative_path }} — {{ item.reason }}</li>{% endfor %}</ul>
+      </details>
+    {% endif %}
+    {% if report.get('errors') %}
+      <h3 class="err">Errores</h3>
+      <ul>{% for error in report.errors %}<li class="err">{{ error.relative_path or error.group_id or '' }} {{ error.message }}</li>{% endfor %}</ul>
+    {% endif %}
+    {% if report.get('review') %}
+      <h3>Revisión pendiente</h3>
+      {% for group in report.review %}
+        <div class="card">
+          <strong>{{ group.reason }}</strong>
+          <ul>{% for member in group.members %}<li><label><input type="checkbox" class="review-member" value="{{ member.file_id }}" checked> <code>{{ member.relative_path }}</code></label></li>{% endfor %}</ul>
+          <div class="row">
+            <button type="button" class="review-action" data-job="{{ job.job_id }}" data-group="{{ group.group_id }}" data-action="same">Tratar como el mismo elemento</button>
+            <button type="button" class="review-action" data-job="{{ job.job_id }}" data-group="{{ group.group_id }}" data-action="separate">Separar elementos</button>
+          </div>
+          <p class="muted" role="status"></p>
+        </div>
+      {% endfor %}
+    {% endif %}
+    {% if report.get('log') %}
+      <details><summary>Registro</summary><pre>{{ report.log | join('\n') }}</pre></details>
+    {% endif %}
+  </section>
+{% else %}
+  <p class="muted">Todavía no hay trabajos. <a href="/">Configura una carpeta y escanéala</a>.</p>
+{% endfor %}
+<script>
+  document.querySelectorAll(".review-action").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const card = button.closest(".card");
+      const status = card.querySelector('[role="status"]');
+      const memberIds = Array.from(card.querySelectorAll(".review-member:checked"), (input) => input.value);
+      if (memberIds.length !== card.querySelectorAll(".review-member").length) {
+        status.textContent = "Selecciona todos los archivos para confirmar esta decisión.";
+        return;
+      }
+      const partition = button.dataset.action === "same"
+        ? [memberIds]
+        : memberIds.map((id) => [id]);
+      status.textContent = "Enviando resolución para este lote...";
+      const url = `/jobs/${encodeURIComponent(button.dataset.job)}/reviews/${encodeURIComponent(button.dataset.group)}`;
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({partition}),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        status.textContent = result.detail || "No se pudo aplicar la decisión.";
+        return;
+      }
+      window.location.hash = `job-${result.job_id}`;
+      window.location.reload();
+    });
+  });
+  if (document.querySelector(".badge.running, .badge.queued")) {
+    window.setTimeout(() => window.location.reload(), 2000);
+  }
+</script>
+{% endblock %}

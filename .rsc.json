@@ -14,6 +14,7 @@
     "deprecation",
     "design",
     "fable-operator",
+    "fastapi",
     "ftd",
     "harness",
     "idea-refinement",
@@ -26,6 +27,7 @@
     "review",
     "sdd",
     "sdd-init",
+    "secure-coding",
     "ship",
     "simplify-code",
     "source-grounded-development",
@@ -47,7 +49,7 @@
     "refuter-tests"
   ],
   "ownSkills": [],
-  "catalogVersion": "3.7.1",
+  "catalogVersion": "3.7.4",
   "tier": null,
   "optOuts": [
     "trunk-open"
@@ -853,6 +855,11 @@
       "02-DOCS/wiki/harness/decisions.md": "a3230874b0ad3c4b1b2afdfce53a3c169bb26e82734e5efddff21766c1b95ea7",
       "02-DOCS/wiki/harness/installation-plan.md": "d03a624fc3147270d5274ed5d258fad129bd4f2113640fd68671b40a2e9b0881",
       "02-DOCS/wiki/harness/user-profile.md": "50c3132270a7ec7d0a8f7d8b7bf17e8d5fcb3aac81b42bb14a593388eb7fa550"
+    },
+    "maintenanceDrift": {
+      "action": "add fastapi,secure-coding",
+      "recordedAt": "2026-11-01T13:54:03.124Z",
+      "requiresReassessment": true
     }
   }
 }

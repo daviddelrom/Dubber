@@ -1,0 +1,53 @@
+version: 1
+project:
+  root: .
+  stacks: [python, fastapi]
+  package_managers: [pip]
+  monorepo: false
+  signals: [pyproject.toml, FastAPI, SQLModel, pytest, mkvmerge]
+sdd:
+  artifact_store: 02-DOCS/wiki/sdd
+  execution_mode: interactive
+  registry_path: .rsc/skill-registry.json
+  review_budget:
+    line_budget: 400
+    file_budget: 12
+  delivery_strategy:
+    default: ask-on-risk
+testing:
+  strict_tdd: true
+  runners: [pytest]
+  commands:
+    apply: ["python -m dubber"]
+    verify: [".venv/bin/python -m pytest -q"]
+phase_rules:
+  proposal: optional-on-ambiguity
+  specify: requires intent or proposal
+  plan: requires spec
+  tasks: requires plan and spec
+  analyze: requires spec plan tasks
+  implement: requires analyze pass, strict_tdd when testing.strict_tdd is true
+  verify: requires spec tasks evidence
+  archive: requires verify record and review/ship outcome
+models:
+  enabled: false
+  provider: anthropic
+  tiers:
+    heavy: claude-sonnet-5.5
+    balanced: claude-sonnet-5.5
+    light: claude-haiku-5.5
+  phases:
+    constitution: heavy
+    specify: balanced
+    clarify: balanced
+    plan: heavy
+    tasks: balanced
+    analyze: heavy
+    implement: balanced
+    verify: balanced
+    review: heavy
+    ship: light
+    debug: heavy
+    worktrees: light
+    sdd-init: light
+  overrides: {}

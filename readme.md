@@ -1,15 +1,26 @@
 # Dubber
 
-App web local (Python + FastAPI) para combinar vídeos en diferentes idiomas con `mkvmerge`. Tienes una película o serie en versión original y buena calidad, y otra copia doblada al español (normalmente de menor calidad). Dubber las empareja por ID de IMDb y genera un MKV con el **vídeo y audio original** más las **pistas de audio en español**.
+Dubber es una aplicación web local para organizar y consolidar copias de películas y episodios en una sola biblioteca. Analiza una carpeta mixta, busca coincidencias por nombres y metadatos locales y crea un MKV en el que conserva el mejor vídeo, las pistas de audio seleccionadas y los subtítulos disponibles.
+
+La aplicación no consulta TMDb, IMDb ni otros servicios en línea. Los archivos fuente nunca se modifican ni se borran.
 
 ## Requisitos
 
 - Python 3.11 o superior
-- `mkvmerge` ([MKVToolNix](https://mkvtoolnix.download/))
+- `mkvmerge`, incluido en [MKVToolNix](https://mkvtoolnix.download/)
+- `ffprobe`, incluido en FFmpeg, para leer metadatos de color HDR
+- `ffmpeg` para ejecutar la suite de pruebas, que genera archivos multimedia de prueba
+
+En Arch Linux:
 
 ```bash
-sudo pacman -S mkvtoolnix-cli  # Arch Linux
-sudo apt install mkvtoolnix    # Debian/Ubuntu
+sudo pacman -S mkvtoolnix-cli ffmpeg
+```
+
+En Debian/Ubuntu:
+
+```bash
+sudo apt install mkvtoolnix ffmpeg
 ```
 
 ## Instalación y arranque
@@ -17,40 +28,47 @@ sudo apt install mkvtoolnix    # Debian/Ubuntu
 ```bash
 git clone https://github.com/daviddelrom/dubber.git
 cd dubber
-python3 -m venv .venv && source .venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -e ".[dev]"
-python -m dubber            # http://127.0.0.1:8000
+python -m dubber
 ```
 
-La app solo escucha en `127.0.0.1`. Opción: `--port N`. La base de datos SQLite se guarda en `./dubber.db` (o en la ruta de la variable `DUBBER_DB`).
+Abre <http://127.0.0.1:8000>. La aplicación escucha solo en `127.0.0.1`; puedes elegir otro puerto con `--port N`.
 
 ## Uso
 
-1. **Ajustes**: indica las carpetas de español, inglés y salida.
-2. **Biblioteca** → *Escanear carpetas*: analiza recursivamente `.mkv`, `.mp4` y `.avi`. Los reescaneos son incrementales (solo se reanalizan archivos cambiados) y se limpian los archivos borrados.
-3. **Coincidencias**: empareja por ID de IMDb (`tt1234567`) y, en series, por temporada y episodio (`S01E02`). Si la duración difiere en 1 s o menos, la coincidencia es *ideal*; si difiere o es desconocida, queda *dudosa* y hay que aprobarla a mano. Tus decisiones se conservan al reescanear.
-4. **Mezclar seleccionadas**: crea un trabajo en segundo plano. El resultado va a la carpeta de salida con la misma ruta relativa y nombre que el archivo en inglés (siempre como `.mkv`). Si el archivo ya existe se omite, salvo que marques *Sobrescribir*.
-5. **Cola**: progreso en vivo, registro y cancelación de cada trabajo. Los escaneos y las mezclas se ejecutan de uno en uno.
+1. En **Ajustes**, elige una única carpeta raíz que contenga películas y episodios en cualquier idioma. El resultado se guarda dentro de esa carpeta, en `dub/`.
+2. Deja **Todos los idiomas detectados** o selecciona los códigos de audio que quieres conservar, por ejemplo `eng, spa`.
+3. Pulsa **Escanear y consolidar**. Dubber recorre la carpeta, excluye `dub/`, analiza archivos `.mkv`, `.mp4` y `.avi`, agrupa copias probables y procesa automáticamente los grupos de alta confianza.
+4. Los grupos ambiguos aparecen en **Trabajos y revisión**. Puedes confirmar que sus archivos son el mismo elemento o separarlos. La decisión se aplica solo al lote actual; cada escaneo posterior vuelve a evaluar los nombres y los metadatos desde cero.
+5. Consulta el progreso, los resultados y los errores en **Trabajos**. Se pueden cancelar los trabajos en curso. Una salida solo se publica después de terminar correctamente la mezcla; cada error se informa y no impide procesar otros grupos.
 
-Los archivos deben llevar el ID de IMDb en el nombre, por ejemplo `tt1234567_pelicula.mkv`.
+El planificador selecciona un vídeo según resolución, HDR positivo y eficiencia del códec; conserva como máximo una pista de audio por idioma seleccionado y todas las pistas de subtítulos disponibles. Si el idioma no está etiquetado y es la única pista de audio, se considera español; varias pistas sin etiqueta requieren revisión.
+
+## Datos y límites
+
+- La base nueva predeterminada es `dubber-v2.db`; puedes cambiar la ruta mediante `DUBBER_DB`.
+- Dubber rechaza bases de datos heredadas o de esquema desconocido antes de modificarlas. No migra ni altera la base antigua.
+- La carpeta `dub/` está reservada para resultados y nunca se analiza como fuente.
+- Entre escaneos, no se guardan las decisiones de revisión.
+- El emparejado es local y conservador. No hay búsqueda en TMDb/IMDb, corrección de desfase de audio, inicio de sesión ni borrado de fuentes.
 
 ## Estructura
 
-```
+```text
 dubber/
-  core/   lógica pura: nombres, emparejado, wrapper de mkvmerge
-  db/     modelos SQLModel y sesión SQLite (WAL)
-  jobs/   cola en segundo plano y tareas de escaneo/mezcla
+  core/   metadatos, agrupación local, planificación y ejecución de muxing
+  db/     modelos SQLModel y sesión SQLite
+  jobs/   escaneo incremental y trabajos por lote
   web/    FastAPI, plantillas Jinja y HTMX
-tests/    pytest (usan ffmpeg y mkvmerge para generar MKV reales)
+tests/    pytest; varias pruebas generan MKV reales con ffmpeg/mkvmerge
 ```
 
-## Tests
+## Pruebas
+
+Con `ffmpeg`, `ffprobe` y `mkvmerge` instalados:
 
 ```bash
-pytest
+.venv/bin/python -m pytest -q
 ```
-
-## Migración desde el script antiguo
-
-El script de menú (`dubber.py`) y su base `mkv.db` ya no se usan. Define las carpetas en Ajustes y escanea de nuevo.

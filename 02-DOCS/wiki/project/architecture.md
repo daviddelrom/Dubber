@@ -1,30 +1,35 @@
 # Arquitectura
 
-```
+```text
 dubber/
-  core/    lógica pura, sin E/S de usuario ni base de datos
-    naming.py    ID IMDb, temporada/episodio, extensiones de vídeo
-    matching.py  emparejado y estado ideal/dudosa por duración
-    mkv.py       wrapper de mkvmerge: probe, comando de mezcla, ejecución con progreso
-  db/
-    models.py    SQLModel: LibraryRoot, MediaFile, Track, Match, Job
-    session.py   motor SQLite con WAL, foreign_keys y busy_timeout
-  jobs/
-    runner.py    JobRunner: un solo hilo, así escaneos y mezclas se serializan
-    tasks.py     escaneo incremental, reconstrucción de coincidencias, mezcla
-  web/
-    app.py       FastAPI, rutas y comprobación de origen
-    templates/   Jinja; HTMX local en static/ (sin CDN)
-tests/           pytest con MKV reales generados por ffmpeg
+  core/    lógica de dominio: metadatos, normalización, agrupación,
+           revisión en memoria y planificación/ejecución de consolidación
+  db/      modelos SQLModel, base SQLite v2 y protección del esquema heredado
+  jobs/    escaneo incremental de una carpeta y trabajos por lote
+  web/     FastAPI, páginas Jinja/HTMX, rutas y validación de origen
+tests/     pytest con MKV reales generados por ffmpeg/mkvmerge
 ```
 
-## Reglas que el código cumple
+## Flujo de datos
 
-- `core/` no importa de `db/`, `jobs/` ni `web/`.
-- Los comandos externos se lanzan siempre con lista de argumentos, nunca con shell.
-- Las tareas de fondo abren sesiones propias; no pasan objetos ORM entre sesiones (provocó un bug real: usar solo IDs).
-- La mezcla escribe en `<salida>.partial` y hace `os.replace` al terminar; una cancelación o un error borran el parcial.
-- Al arrancar, los jobs que quedaron `queued` o `running` se marcan `failed` (la app se cerró).
-- Las peticiones POST con cabecera `Origin` de otro host se rechazan con 403.
-- La carpeta `dub` puede no existir (se crea); `esp` y `eng` deben existir.
-- Las fechas son con zona horaria (UTC); esta versión de SQLModel lo exige.
+```text
+Ajustes web → escaneo recursivo → mkvmerge -J + ffprobe
+            → agrupación local → revisión del lote actual
+            → plan de pistas → mkvmerge → <origen>/dub/
+```
+
+La aplicación de arranque usa la biblioteca v2. El flujo web legado se conserva solo para compatibilidad con las rutas de construcción que reciben explícitamente un motor o runner antiguo; no es la experiencia normal de `python -m dubber`.
+
+## Límites y garantías
+
+- `core/` no importa `db/`, `jobs/` ni `web/`.
+- Los ejecutables externos se invocan con listas de argumentos, nunca mediante shell.
+- Las tareas de fondo usan sesiones de base de datos propias; no comparten objetos ORM entre sesiones.
+- `mkvmerge` construye un archivo parcial junto al destino. Solo una ejecución correcta publica la salida; el error o la cancelación elimina el parcial y conserva un resultado previo.
+- Cada salida se publica por grupo, no por lote. Los errores se registran y el procesamiento continúa con otros grupos.
+- `dub/` está reservado para resultados y queda fuera del escaneo de fuentes.
+- La base `dubber-v2.db` se separa de la heredada; el preflight rechaza esquemas heredados o desconocidos antes de crear tablas.
+- Las decisiones de revisión no se guardan para escaneos posteriores.
+- Al reiniciar, los trabajos `queued` o `running` se marcan como fallidos por interrupción.
+- Las peticiones POST con un encabezado `Origin` de otro host se rechazan.
+- El servidor solo escucha en `127.0.0.1`.

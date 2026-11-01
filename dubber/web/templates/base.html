@@ -32,9 +32,8 @@
     <strong>🎬 Dubber</strong>
     {% set current = request.url.path %}
     <a href="/library" class="{{ 'active' if current.startswith('/library') }}">Biblioteca</a>
-    <a href="/matches" class="{{ 'active' if current.startswith('/matches') }}">Coincidencias</a>
     <a href="/jobs" class="{{ 'active' if current.startswith('/jobs') }}">Cola</a>
-    <a href="/settings" class="{{ 'active' if current.startswith('/settings') }}">Ajustes</a>
+    <a href="/" class="{{ 'active' if current in ('/', '/settings') }}">Ajustes</a>
   </nav>
   {% block content %}{% endblock %}
 </body>

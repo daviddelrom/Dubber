@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Biblioteca local · Dubber{% endblock %}
+{% block content %}
+<h2>Biblioteca local</h2>
+<p>Elige una carpeta con películas y episodios. Dubber buscará copias localmente y guardará las consolidaciones en <code>dub/</code>.</p>
+<div class="row">
+  <span class="badge {{ 'done' if mkvmerge else 'failed' }}">mkvmerge {{ 'disponible' if mkvmerge else 'no encontrado' }}</span>
+  <span class="badge {{ 'done' if ffprobe else 'failed' }}">ffprobe {{ 'disponible' if ffprobe else 'no encontrado' }}</span>
+</div>
+{% if not mkvmerge or not ffprobe %}
+  <p class="err">Instala MKVToolNix y FFmpeg para analizar y consolidar archivos. No se instalarán herramientas automáticamente.</p>
+{% endif %}
+<form method="post" action="/settings">
+  <p>
+    <label for="source_root"><strong>Carpeta de origen</strong></label>
+    <input id="source_root" type="text" name="source_root" value="{{ roots.source_root }}" placeholder="/ruta/a/tu/biblioteca" required>
+  </p>
+  <fieldset>
+    <legend>Idiomas de audio</legend>
+    <label><input type="radio" name="language_mode" value="all" {{ 'checked' if roots.language_mode == 'all' }}> Todos los idiomas detectados</label>
+    <p class="muted">O selecciona uno o varios códigos de idioma (por ejemplo, eng, spa).</p>
+    <label><input type="radio" name="language_mode" value="selected" {{ 'checked' if roots.language_mode == 'selected' }}> Idiomas seleccionados</label>
+    <p>
+      <label for="selected_languages">Códigos separados por comas</label>
+      <input id="selected_languages" type="text" name="selected_languages" value="{{ roots.selected_languages | join(', ') }}" placeholder="eng, spa">
+    </p>
+  </fieldset>
+  <p class="muted">Las decisiones de revisión solo se aplican al lote actual y se vuelven a evaluar en el siguiente escaneo. Las fuentes no se modifican. Base: <code>{{ database_path.name }}</code>.</p>
+  <div class="row">
+    <button class="primary" type="submit">Guardar ajustes</button>
+    {% if roots.source_root %}
+      <button type="button" class="primary" id="scan-library" {{ 'disabled' if not mkvmerge or not ffprobe }}>Escanear y consolidar</button>
+    {% endif %}
+    <a class="btn" href="/jobs">Ver trabajos</a>
+  </div>
+</form>
+<p id="scan-result" class="muted" role="status"></p>
+<script>
+  document.getElementById("scan-library")?.addEventListener("click", async () => {
+    const result = document.getElementById("scan-result");
+    result.textContent = "Enviando el escaneo...";
+    const response = await fetch("/jobs/scan", {method: "POST"});
+    const data = await response.json();
+    if (!response.ok) {
+      result.textContent = data.detail || "No se pudo iniciar el escaneo.";
+      return;
+    }
+    window.location.href = `/jobs#job-${encodeURIComponent(data.job_id)}`;
+  });
+</script>
+{% endblock %}

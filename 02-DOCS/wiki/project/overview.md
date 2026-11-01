@@ -1,15 +1,22 @@
 # Dubber: visión general
 
-Dubber es una app web local (Python + FastAPI) que combina dos copias de la misma película o serie: la original en inglés (buena calidad) y la doblada al español (normalmente de menor calidad). El resultado es un MKV con el vídeo y el audio originales más las pistas de audio en español.
+Dubber es una aplicación web local (Python + FastAPI) que convierte una carpeta mixta de películas y episodios en una biblioteca consolidada. Agrupa copias mediante nombres y metadatos locales, conserva el vídeo de mayor prioridad y reúne las pistas de audio y subtítulos elegidas en un MKV bajo `dub/`.
 
-- **Uso:** personal, un solo usuario, en local. Escucha solo en `127.0.0.1`.
-- **Arranque:** `python -m dubber` (puerto 8000, opción `--port`). Entorno en `.venv/`.
-- **Tests:** `.venv/bin/python -m pytest` (15 tests; usan `ffmpeg` y `mkvmerge` reales).
-- **Origen:** sustituye al script de menú `dubber.py`, retirado en `feat/web-app` (sigue en el historial).
-- **Fuera de la v1:** ajuste de offset de audio, login, Docker, búsqueda en TMDb/IMDb.
+- **Uso:** personal, una persona usuaria, ejecución local; escucha solo en `127.0.0.1`.
+- **Arranque:** `python -m dubber` (puerto 8000, opción `--port`).
+- **Datos:** SQLite/SQLModel en `dubber-v2.db` por defecto; `DUBBER_DB` permite elegir otra ruta. La base heredada no se migra ni se modifica.
+- **Herramientas locales:** `mkvmerge` y `ffprobe` son necesarios para la aplicación; `ffmpeg` se usa para generar archivos en pruebas.
+- **Red:** el emparejado es local; no consulta TMDb, IMDb ni otros servicios de metadatos.
+- **Pruebas:** `.venv/bin/python -m pytest -q`.
 
-## Flujo de la app
+## Flujo de la aplicación
 
-Ajustes (carpetas esp/eng/dub) → Escanear (job) → Coincidencias (aprobar o descartar las dudosas) → Mezclar (job) → Cola (progreso, log, cancelar).
+Ajustes (un solo directorio y selección de idiomas) → escaneo incremental → agrupación local → consolidación automática de coincidencias seguras y revisión no bloqueante de las ambiguas → resultados en `dub/`.
 
-Se empareja por ID de IMDb (`tt1234567`) y, en series, por `SxxEyy`. Coincidencia *ideal* si la duración difiere 1 s o menos; *dudosa* si difiere o es desconocida (requiere aprobación manual).
+Se reconocen películas mediante título/año y duración y episodios mediante la serie y numeración normalizada (`SxxEyy` o `NxNN`). Una coincidencia ambigua requiere confirmación. Las decisiones de revisión solo se aplican al lote actual y **cada escaneo vuelve a evaluar** los nombres y metadatos; no se guardan para uso futuro.
+
+Los archivos de `dub/` se excluyen del escaneo. Las fuentes permanecen intactas. Los trabajos exponen progreso, resultados, errores y cancelación.
+
+## Límites de producto
+
+La app no busca datos en TMDb/IMDb, no corrige desfases de audio, no borra archivos fuente y no requiere login, Docker ni servicios externos.

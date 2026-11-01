@@ -66,3 +66,5 @@ __pycache__/
 .github/agents/refuter-security.agent.md
 .github/agents/refuter-tests.agent.md
 .github/prompts/python-review.prompt.md
+.github/rsc/fastapi
+.github/rsc/secure-coding

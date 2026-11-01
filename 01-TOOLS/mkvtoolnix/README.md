@@ -1,12 +1,13 @@
-# MKVToolNix y ffmpeg (herramientas locales)
+# MKVToolNix y FFmpeg (herramientas locales)
 
-Dubber no usa servicios externos ni credenciales. Depende de dos binarios locales.
+Dubber no usa servicios externos ni credenciales. Analiza y consolida los archivos con ejecutables locales:
 
-| Binario | Uso | Obligatorio |
+| Binario | Uso | Requerido |
 |---|---|---|
-| `mkvmerge` | analizar (`-J`) y mezclar pistas | sí, en la app |
-| `ffmpeg` | generar MKV de prueba en los tests | solo para tests (se omiten sin él) |
+| `mkvmerge` | Leer metadatos de pistas (`-J`) y crear el MKV consolidado | Sí, en la aplicación |
+| `ffprobe` | Leer transferencia de color HDR que no expone `mkvmerge -J` | Sí, en la aplicación |
+| `ffmpeg` | Crear archivos multimedia temporales para las pruebas | Solo para la suite de pruebas |
 
-Instalación: `sudo pacman -S mkvtoolnix-cli ffmpeg` (Arch) o `sudo apt install mkvtoolnix ffmpeg` (Debian/Ubuntu).
+`ffprobe` se instala como parte de FFmpeg. Instalación en Arch: `sudo pacman -S mkvtoolnix-cli ffmpeg`. En Debian/Ubuntu: `sudo apt install mkvtoolnix ffmpeg`.
 
-Comprobación: `./test_connection.sh`. La pantalla Ajustes de la app también avisa si falta `mkvmerge`.
+Ejecuta `./test_connection.sh` para comprobar los ejecutables requeridos de la aplicación. La pantalla Ajustes también muestra si falta `mkvmerge` o `ffprobe`; en ese caso el escaneo se deshabilita.
