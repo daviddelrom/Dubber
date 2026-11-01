@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Biblioteca · Dubber{% endblock %}
+{% block content %}
+<h2>Biblioteca</h2>
+{% if not config %}
+  <p>No hay una carpeta configurada. <a href="/">Configura tu biblioteca</a> para empezar.</p>
+{% else %}
+  <p><strong>Origen:</strong> <code>{{ config.source_root }}</code></p>
+  <p><strong>Salida:</strong> <code>{{ config.output_root }}</code></p>
+  <p>Los escaneos ignoran la carpeta de salida y conservan intactos los archivos de origen.</p>
+  <a class="btn" href="/">Ajustes</a>
+  <a class="btn" href="/jobs">Trabajos y revisión</a>
+{% endif %}
+{% endblock %}

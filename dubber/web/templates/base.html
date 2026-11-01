@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Dubber{% endblock %}</title>
+  <script src="/static/htmx.min.js"></script>
+  <style>
+    :root { color-scheme: light dark; --line: #8884; --accent: #2563eb; }
+    body { font: 15px/1.5 system-ui, sans-serif; max-width: 1100px; margin: 0 auto; padding: 0 1rem 3rem; }
+    nav { display: flex; gap: 1.25rem; align-items: center; padding: 1rem 0; border-bottom: 1px solid var(--line); margin-bottom: 1.5rem; }
+    nav strong { margin-right: auto; font-size: 1.15rem; }
+    nav a { text-decoration: none; color: inherit; opacity: .7; }
+    nav a.active { opacity: 1; font-weight: 600; border-bottom: 2px solid var(--accent); }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: .45rem .6rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+    button, .btn { font: inherit; padding: .35rem .8rem; border-radius: 6px; border: 1px solid var(--line); background: transparent; color: inherit; cursor: pointer; }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    input[type=text] { font: inherit; width: 100%; padding: .4rem; box-sizing: border-box; }
+    .badge { padding: .1rem .5rem; border-radius: 99px; font-size: .8rem; border: 1px solid var(--line); }
+    .ideal, .approved, .done { color: #16a34a; } .doubtful, .running { color: #d97706; }
+    .discarded, .failed, .cancelled, .err { color: #dc2626; }
+    .muted { opacity: .65; } .row { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+    progress { width: 100%; height: .9rem; }
+    pre { background: #8881; padding: .6rem; border-radius: 6px; overflow: auto; max-height: 14rem; white-space: pre-wrap; }
+    .card { border: 1px solid var(--line); border-radius: 8px; padding: .8rem 1rem; margin-bottom: .8rem; }
+    form.inline { display: inline; }
+  </style>
+</head>
+<body>
+  <nav>
+    <strong>🎬 Dubber</strong>
+    {% set current = request.url.path %}
+    <a href="/library" class="{{ 'active' if current.startswith('/library') }}">Biblioteca</a>
+    <a href="/jobs" class="{{ 'active' if current.startswith('/jobs') }}">Cola</a>
+    <a href="/" class="{{ 'active' if current in ('/', '/settings') }}">Ajustes</a>
+  </nav>
+  {% block content %}{% endblock %}
+</body>
+</html>

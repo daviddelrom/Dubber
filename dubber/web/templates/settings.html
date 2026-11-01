@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Ajustes · Dubber{% endblock %}
+{% block content %}
+<h2>Ajustes</h2>
+{% if not mkvmerge %}
+  <p class="err">⚠ No se encuentra <code>mkvmerge</code>. Instala MKVToolNix (<code>sudo apt install mkvtoolnix</code> / <code>sudo pacman -S mkvtoolnix-cli</code>).</p>
+{% else %}
+  <p class="done">✓ mkvmerge disponible</p>
+{% endif %}
+<form method="post" action="/settings">
+  {% for kind, label in KINDS.items() %}
+    <p>
+      <label><strong>{{ label }}</strong><br>
+        <input type="text" name="{{ kind }}" value="{{ roots.get(kind, '') }}" placeholder="/ruta/a/{{ kind }}" required>
+      </label>
+      {% if errors.get(kind) %}<span class="err">{{ errors[kind] }}</span>{% endif %}
+    </p>
+  {% endfor %}
+  <p class="muted">La carpeta de salida se crea si no existe. Los archivos deben llevar un ID de IMDb en el nombre, por ejemplo <code>tt1234567_pelicula.mkv</code>.</p>
+  <button class="primary">Guardar</button>
+</form>
+{% endblock %}
